@@ -1169,6 +1169,30 @@ func (c *Command) AddCommand(cmds ...*Command) {
 	}
 }
 
+func (c *Command) AddCommandAlias(name string, cmd *Command, flags [][2]string) {
+	alias := Command{
+		Use: name,
+		PreRun: func(c *Command, args []string) {
+			existing := map[string]bool{}
+			c.Flags().Visit(func(f *flag.Flag) {
+				existing[f.Name] = true
+			})
+			for _, pair := range flags {
+				if _, exists := existing[pair[0]]; !exists {
+					c.Flags().Set(pair[0], pair[1])
+				}
+			}
+			if cmd.PreRun != nil {
+				cmd.PreRun(c, args)
+			}
+		},
+		RunE: func(c *Command, args []string) error {
+			return cmd.RunE(c, args)
+		},
+	}
+	c.AddCommand(&alias)
+}
+
 // RemoveCommand removes one or more commands from a parent command.
 func (c *Command) RemoveCommand(cmds ...*Command) {
 	commands := []*Command{}
