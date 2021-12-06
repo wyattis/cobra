@@ -1171,7 +1171,8 @@ func (c *Command) AddCommand(cmds ...*Command) {
 
 func (c *Command) AddCommandAlias(name string, cmd *Command, flags [][2]string) {
 	alias := Command{
-		Use: name,
+		Use:   name,
+		Short: "alias for " + cmd.Use,
 		PreRun: func(c *Command, args []string) {
 			existing := map[string]bool{}
 			c.Flags().Visit(func(f *flag.Flag) {
