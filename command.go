@@ -1169,29 +1169,59 @@ func (c *Command) AddCommand(cmds ...*Command) {
 	}
 }
 
-func (c *Command) AddCommandAlias(name string, cmd *Command, flags [][2]string) {
-	alias := Command{
-		Use:   name,
-		Short: "alias for " + cmd.Use,
-		PreRun: func(c *Command, args []string) {
-			existing := map[string]bool{}
-			c.Flags().Visit(func(f *flag.Flag) {
-				existing[f.Name] = true
-			})
-			for _, pair := range flags {
-				if _, exists := existing[pair[0]]; !exists {
-					c.Flags().Set(pair[0], pair[1])
-				}
-			}
-			if cmd.PreRun != nil {
-				cmd.PreRun(c, args)
-			}
-		},
-		RunE: func(c *Command, args []string) error {
-			return cmd.RunE(c, args)
-		},
+func (c *Command) clone() *Command {
+	cmd := &Command{
+		Use:                    c.Use,
+		Aliases:                c.Aliases,
+		SuggestFor:             c.SuggestFor,
+		Short:                  c.Short,
+		Long:                   c.Long,
+		Example:                c.Example,
+		ValidArgs:              c.ValidArgs,
+		ValidArgsFunction:      c.ValidArgsFunction,
+		Args:                   c.Args,
+		ArgAliases:             c.ArgAliases,
+		BashCompletionFunction: c.BashCompletionFunction,
+		Deprecated:             c.Deprecated,
+		Annotations:            c.Annotations,
+		Version:                c.Version,
+
+		PersistentPreRun:   c.PersistentPreRun,
+		PersistentPreRunE:  c.PersistentPreRunE,
+		PreRun:             c.PreRun,
+		PreRunE:            c.PreRunE,
+		Run:                c.Run,
+		RunE:               c.RunE,
+		PostRun:            c.PostRun,
+		PostRunE:           c.PostRunE,
+		PersistentPostRunE: c.PersistentPostRunE,
+		PersistentPostRun:  c.PersistentPostRun,
 	}
-	c.AddCommand(&alias)
+	cmd.Flags().AddFlagSet(c.Flags())
+	cmd.PersistentFlags().AddFlagSet(c.PersistentFlags())
+	return cmd
+}
+
+func (c *Command) AddCommandAlias(name string, cmd *Command, flags [][2]string) *Command {
+	alias := c.clone()
+	alias.Use = name
+	alias.Short = "alias for " + cmd.Use
+	alias.PreRun = func(c *Command, args []string) {
+		existing := map[string]bool{}
+		c.Flags().Visit(func(f *flag.Flag) {
+			existing[f.Name] = true
+		})
+		for _, pair := range flags {
+			if _, exists := existing[pair[0]]; !exists {
+				c.Flags().Set(pair[0], pair[1])
+			}
+		}
+		if cmd.PreRun != nil {
+			cmd.PreRun(c, args)
+		}
+	}
+	c.AddCommand(alias)
+	return alias
 }
 
 // RemoveCommand removes one or more commands from a parent command.
